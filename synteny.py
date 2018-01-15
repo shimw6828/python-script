@@ -103,7 +103,8 @@ def filter_gene(inputfile,outputfile,size):
             with open(outputfile,'a') as f:
                 str_title=">spotted first Chromosome/scaffold name:"+ str(first_ch)+ "; " +data.columns[5] + ":" + str(second_ch) +"\n"
                 block = put_list(first_syn,second_syn)
-                f.write(str_title + block)
+                if block!="":
+                    f.write(str_title + block)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
