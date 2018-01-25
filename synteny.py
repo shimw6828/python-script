@@ -4,22 +4,19 @@ import numpy as np
 import pandas as pd
 import argparse,os
 
-def get_list(begin,end,gene_list):
-    a=gene_list.index(begin)
-    b=gene_list.index(end)
-    blcok=gene_list[a:b+1]
-    return blcok
 
-def put_list(first_syn,second_syn):
+
+def put_list(first_syn,second_syn,first_ch,second_ch):
     str=""
     sep = "\t"
-    for i,j in zip(first_syn,second_syn):
-        str = str + "#block"+ bytes(first_syn.index(i)+1) + "\n"
-        str = str + "first block:" + sep.join(i) + "\n"
-        str = str + "second block:" + sep.join(j) +"\n"
+    for first_syn_b,second_syn_b in zip(first_syn,second_syn):
+        for i,j in zip(first_syn_b,second_syn_b):
+            str= str+i+sep+j+sep+"block"+ bytes(first_syn.index(first_syn_b)+1)+sep+first_ch+sep+second_ch+"\n"
+
     return str
 
-def filter_gene(inputfile,outputfile,size):
+def filter_gene(inputfile,outputfile,size,block_size):
+
     try:
         data = pd.read_csv(inputfile)
     except:
@@ -28,7 +25,8 @@ def filter_gene(inputfile,outputfile,size):
         print "the first Chromosome/scaffold name is not exit,you must let it in 2 columns"
     if "chromosome/scaffold name" not in data.columns[5].lower():
         print "the second Chromosome/scaffold name is not exit,you must let it in 6 columns"
-
+    f=open(outputfile,'w')
+    f.write("first gene\tsecond\tblock\tgar chromosome/scaffold name\t"+data.columns[5]+"\n")
     groups_first=data.groupby(data[data.columns[1]])
     # 成功利用print验证，可以获取染色体单对单的列表
     for first_ch ,group_first in groups_first:
@@ -55,8 +53,8 @@ def filter_gene(inputfile,outputfile,size):
                 if matrix[second_gene.index(i),first_gene.index(j)]!=1:
                     continue
                 #创建list存放
-                second_syn_begin,second_syn_end=i,i
-                first_syn_begin,first_syn_end=j,j
+                second_syn_block=[i]
+                first_syn_block=[j]
                 m,n=second_gene.index(i),first_gene.index(j)
                 j,k=second_gene.index(i),first_gene.index(j)
                 if len(second_gene) - 1 - j < size:
@@ -70,10 +68,14 @@ def filter_gene(inputfile,outputfile,size):
 
                 while n <= k+eg :
                     while m<= j+ec :
+                        #跳过第一个数
+                        if m==j and n==k:
+                            m=m+1
+                            continue
 
                         if matrix[m,n]>0:
-                            second_syn_end=second_gene[m]
-                            first_syn_end=first_gene[n]
+                            second_syn_block.append(second_gene[m])
+                            first_syn_block.append(first_gene[n])
                             k,j=n,m
                             # 这里计算-1是因为len返回的是长度，但是数组开始是0
                             if len(second_gene)-1- j < size:
@@ -86,39 +88,46 @@ def filter_gene(inputfile,outputfile,size):
                                 eg = size
 
                             matrix[m,n]=2
-                            m=m+1
+                            #此处 n-1 是为了抵消下面的 n+1 使n依然维持在原处
+                            n=n-1
                             break
                         m=m+1
                         #判断是否到达框的边缘
 
                         if m>j+ec:
-                            m=m-ec
+                            m=j
                             break
                     n=n+1
-                if second_syn_end!=second_syn_begin:
-                    block_second=get_list(second_syn_begin,second_syn_end,second_gene)
-                    block_first=get_list(first_syn_begin,first_syn_end,first_gene)
-                    second_syn.append(block_second)
-                    first_syn.append(block_first)
-            with open(outputfile,'a') as f:
-                str_title=">spotted first Chromosome/scaffold name:"+ str(first_ch)+ "; " +data.columns[5] + ":" + str(second_ch) +"\n"
-                block = put_list(first_syn,second_syn)
-                if block!="":
-                    f.write(str_title + block)
+                if len(first_syn_block)>=block_size:
+                    first_syn.append(first_syn_block)
+                    second_syn.append(second_syn_block)
+            block=put_list(first_syn,second_syn,first_ch,second_ch)
+            if block!="":
+                f.write(block)
+
+    f.close()
+
+
+
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--size", help="dim the window size", default=100, type=int)
     parser.add_argument("-i", "--inputfile", help="the input file you give,must be csv file", type=str)
     parser.add_argument("-o", "--outputfile", help="the output file you want create", type=str)
+    parser.add_argument("-b", "--block_size", help="dim the min block size", default=5,type=int)
     args = parser.parse_args()
     inputfile = args.inputfile
     outputfile = args.outputfile
     size = args.size
+    block_size=args.block_size
     if os.path.exists(outputfile):
         print "the outputfile is already exists,we won't delete it,please delete it by yourself"
         os._exit()
-    filter_gene(inputfile,outputfile,size)
+    filter_gene(inputfile,outputfile,size,block_size)
+
 
 
 
