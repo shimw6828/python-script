@@ -3,12 +3,17 @@ import re
 import pandas as pd
 import os
 import argparse
+import sys
+
+reload(sys)
+
+sys.setdefaultencoding('utf-8')
 
 
 def main(inputfile,outputfile):
     drug_list = pd.read_csv(inputfile)
     f=open(outputfile,"w")
-    f.write("drug_name\tdrug_id\tstructure_url\tCSA_number\tmechanism_of_action\ttarget\tactions\n")
+    f.write("drug_name\tdrug_id\tstructure_url\tCAS_number\tmechanism_of_action\ttarget\tactions\n")
     seq="\t"
     for drug_id in drug_list["Drugbank ID"]:
         if drug_id[0:2]!="DB":
@@ -26,7 +31,7 @@ def main(inputfile,outputfile):
         mechanism_of_action=re.search('<dt class="col-md-2 col-sm-4">Mechanism of action</dt><dd class="col-md-10 col-sm-8"><p>(?P<mechanism>[\s\S]+?)</p>',html)
         try:
             mechanism_of_action=mechanism_of_action.group('mechanism')
-            mechanism_of_action=mechanism_of_action.replace("\n","")
+            mechanism_of_action=mechanism_of_action.replace("\n"," ")
         except:
             mechanism_of_action="Not Available"
         target_table=re.findall('<tr><td><span.+?</span><a .*?>(?P<target>.+?)</a></td><td><.*?>(?P<action>.+?)<.*?></td>',html)
@@ -46,5 +51,3 @@ if __name__ == "__main__":
         print("the outputfile is already exist")
         os._exit(0)
     main(inputfile, outputfile)
-
-
